@@ -2,7 +2,7 @@ import { useState, useEffect, createRef } from "react";
 
 import Head from "next/head";
 
-import ReactPlayer from "react-player/youtube";
+import ReactPlayer, { YouTubeConfig } from "react-player/youtube";
 
 interface LevelDataClass {
   id: number;
@@ -10,6 +10,7 @@ interface LevelDataClass {
   clipId: string;
   startAt: number;
   stopAt: number;
+  continueFor: number;
   choices: {
     id: number;
     text: string;
@@ -20,19 +21,95 @@ interface LevelDataClass {
 export default function Home({ levelData }: { levelData: LevelDataClass }) {
   const [domLoaded, setDomLoaded] = useState(false);
   const playerRef = createRef<ReactPlayer>();
-  const [playingPlayer, setPlayingPlayer] = useState<boolean>(false);
+  const [state, setState] = useState({
+    url: `https://www.youtube.com/watch?v=${levelData.clipId}`,
+    pip: false,
+    playing: false,
+    controls: false,
+    light: false,
+    volume: 0.8,
+    muted: false,
+    played: 0,
+    loaded: 0,
+    duration: 0,
+    playbackRate: 1.0,
+    finished: false,
+    hitStopAt: false,
+    hasShownAfterChoice: false,
+  });
+
+  const youtubeConfig: YouTubeConfig = {
+    playerVars: {
+      autohide: 0,
+      showinfo: 0,
+      controls: 0,
+      modestbranding: 1,
+      rel: 0,
+      disablekb: 1,
+      iv_load_policy: 3,
+      start: levelData.startAt,
+      cc_load_policy: 0,
+      fs: 0,
+      playsinline: 1,
+      enablejsapi: 1,
+      origin: "http://localhost:3000",
+      widgetId: 1,
+    },
+    embedOptions: {
+      autoplay: 0,
+    },
+    onUnstarted: () => {
+      console.log("onUnstarted");
+    },
+  };
 
   useEffect(() => {
     setDomLoaded(true);
   }, []);
 
-  const onProgress = (e: any) => {
-    console.log(e);
+  const handlePlay = () => {
+    console.log("onPlay");
+    setState({ ...state, playing: true });
   };
 
-  const startVideo = () => {
-    playerRef.current?.seekTo(levelData.startAt);
-    setPlayingPlayer(true);
+  const handlePause = () => {
+    console.log("onPause");
+    setState({ ...state, playing: false });
+  };
+
+  const handleEnded = () => {
+    console.log("onEnd");
+    setState({ ...state, finished: true });
+  };
+
+  const handleProgress = (v_state: any) => {
+    console.log("onProgress", v_state);
+    if (v_state.playedSeconds >= levelData.stopAt) {
+      if (!state.hitStopAt) {
+        console.log("onPause");
+        setState({ ...state, playing: false, hitStopAt: true });
+      } else {
+        if (v_state.playedSeconds >= levelData.stopAt + levelData.continueFor) {
+          // its hit the stop at and the continue to time
+          console.log("showAnswer");
+          setState({
+            ...state,
+            playing: false,
+            finished: true,
+            hasShownAfterChoice: true,
+          });
+        }
+      }
+    }
+  };
+
+  const handleDuration = (duration: any) => {
+    console.log("onDuration", duration);
+    setState({ ...state, duration });
+  };
+
+  const handlePlayPause = () => {
+    setState({ ...state, playing: !state.playing });
   };
 
   return (
@@ -48,34 +125,90 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
           backgroundColor: "red",
           minHeight: "100vh",
           display: "flex",
+          flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        {domLoaded && (
-          <div>
-            {!playingPlayer && <button onClick={startVideo}>Start</button>}
-            <div
-              style={{
-                pointerEvents: "none",
-              }}
-            >
+        <div
+          style={{
+            display: "flex",
+            zIndex: 100,
+          }}
+        >
+          <button onClick={handlePlayPause}>
+            {state.playing ? "Pause" : "Play"}
+          </button>
+        </div>
+        <div
+          style={{
+            position: "relative",
+            backgroundColor: "green",
+            width: 1920 / 2,
+            height: 1080 / 2,
+            maxWidth: 1920 / 2,
+            maxHeight: 1080 / 2,
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              border: "4px solid blue",
+              zIndex: 10,
+            }}
+          />
+          {domLoaded && (
+            <>
               <ReactPlayer
-                id="player"
                 ref={playerRef}
-                playing={playingPlayer}
-                url={`https://www.youtube.com/watch?v=${levelData.clipId}`}
-                controls={false}
-                light={true}
-                width={1920 / 2}
-                height={1080 / 2}
-                pip={false}
-                stopOnUnmount={false}
-                onProgress={onProgress}
+                className="youtube-container"
+                config={youtubeConfig}
+                url={state.url}
+                pip={state.pip}
+                playing={state.playing}
+                controls={state.controls}
+                light={state.light}
+                loop={false}
+                playbackRate={state.playbackRate}
+                volume={state.volume}
+                muted={state.muted}
+                onReady={() => console.log("onReady")}
+                onStart={() => console.log("onStart")}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onBuffer={() => console.log("onBuffer")}
+                onSeek={(e) => console.log("onSeek", e)}
+                onEnded={handleEnded}
+                onError={(e) => console.log("onError", e)}
+                onProgress={handleProgress}
+                onDuration={handleDuration}
               />
-            </div>
-          </div>
-        )}
+              <div
+                style={{
+                  display: "flex",
+                  width: "100%",
+                }}
+              >
+                <code
+                  style={{
+                    color: "white",
+                    fontSize: 20,
+                    fontWeight: "bold",
+                    textShadow: "0px 0px 10px black",
+                    wordWrap: "break-word",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {JSON.stringify(state)}
+                </code>
+              </div>
+            </>
+          )}
+        </div>
       </main>
     </>
   );
@@ -85,9 +218,10 @@ export async function getServerSideProps() {
   const levelData = {
     id: 1,
     title: "What does XQC say next?",
-    clipId: "vVgw9GWNCHg",
+    clipId: "gHwkvZWzqyM",
     startAt: 0,
     stopAt: 5,
+    continueFor: 9,
     choices: [
       {
         id: 1,
