@@ -110,3 +110,9 @@ a {
   /* ...and bring it back again */
   margin-top: -28%;
 }
+
+/* add a cool hover effect to items of choice-container */
+.choice-container:hover {
+  filter: brightness(1.1);
+  border: 1px solid rgb(var(--foreground-rgb));
+}

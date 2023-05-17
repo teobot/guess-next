@@ -14,20 +14,38 @@ interface LevelDataClass {
   choices: {
     id: number;
     text: string;
+    colour: string;
   }[];
   answer: number;
+}
+
+interface State {
+  url: string;
+  pip: boolean;
+  playing: boolean;
+  controls: boolean;
+  light: boolean;
+  volume: number;
+  muted: boolean;
+  played: number;
+  loaded: number;
+  duration: number;
+  playbackRate: number;
+  finished: boolean;
+  hitStopAt: boolean;
+  hasShownAfterChoice: boolean;
 }
 
 export default function Home({ levelData }: { levelData: LevelDataClass }) {
   const [domLoaded, setDomLoaded] = useState(false);
   const playerRef = createRef<ReactPlayer>();
-  const [state, setState] = useState({
+  const [state, setState] = useState<State>({
     url: `https://www.youtube.com/watch?v=${levelData.clipId}`,
     pip: false,
     playing: false,
     controls: false,
     light: false,
-    volume: 0.8,
+    volume: 0,
     muted: false,
     played: 0,
     loaded: 0,
@@ -84,23 +102,30 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
 
   const handleProgress = (v_state: any) => {
     console.log("onProgress", v_state);
+
+    let stateToChange: State = {
+      ...state,
+    };
+
     if (v_state.playedSeconds >= levelData.stopAt) {
       if (!state.hitStopAt) {
         console.log("onPause");
-        setState({ ...state, playing: false, hitStopAt: true });
+        stateToChange.playing = false;
+        stateToChange.hitStopAt = true;
       } else {
         if (v_state.playedSeconds >= levelData.stopAt + levelData.continueFor) {
           // its hit the stop at and the continue to time
           console.log("showAnswer");
-          setState({
-            ...state,
-            playing: false,
-            finished: true,
-            hasShownAfterChoice: true,
-          });
+          stateToChange.playing = false;
+          stateToChange.finished = true;
+          stateToChange.hasShownAfterChoice = true;
         }
       }
     }
+
+    stateToChange.played = v_state.playedSeconds;
+
+    setState(stateToChange);
   };
 
   const handleDuration = (duration: any) => {
@@ -110,6 +135,63 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
 
   const handlePlayPause = () => {
     setState({ ...state, playing: !state.playing });
+  };
+
+  function convertHex(hexCode: string, opacity = 1) {
+    let hex = hexCode.replace("#", "");
+
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+
+    let r = parseInt(hex.substring(0, 2), 16);
+    let g = parseInt(hex.substring(2, 4), 16);
+    let b = parseInt(hex.substring(4, 6), 16);
+
+    /* Backward compatibility for whole number based opacity values. */
+    if (opacity > 1 && opacity <= 100) {
+      opacity = opacity / 100;
+    }
+
+    return "rgba(" + r + "," + g + "," + b + "," + opacity + ")";
+  }
+
+  const selectChoice = (id: number) => {
+    console.log("selectChoice", id);
+  };
+
+  const OverlayContainer = ({
+    children,
+    top = 0,
+    right = 0,
+    bottom = 0,
+    left = 0,
+  }: {
+    children: any;
+    top?: number;
+    right?: number;
+    bottom?: number;
+    left?: number;
+  }) => {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: top,
+          right: right,
+          left: left,
+          bottom: bottom,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 100,
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        {children}
+      </div>
+    );
   };
 
   return (
@@ -132,35 +214,105 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
       >
         <div
           style={{
-            display: "flex",
-            zIndex: 100,
-          }}
-        >
-          <button onClick={handlePlayPause}>
-            {state.playing ? "Pause" : "Play"}
-          </button>
-        </div>
-        <div
-          style={{
             position: "relative",
             backgroundColor: "green",
             width: 1920 / 2,
             height: 1080 / 2,
             maxWidth: 1920 / 2,
             maxHeight: 1080 / 2,
+            border: "6px solid blue",
           }}
         >
           <div
             style={{
               position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
+              top: 4,
+              right: 4,
               bottom: 0,
-              border: "4px solid blue",
-              zIndex: 10,
+              fontSize: 20,
+              fontWeight: "bold",
+              backgroundColor: "black",
+              height: 30,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
             }}
-          />
+          >
+            {Math.round(state.played)} / {levelData.stopAt}
+          </div>
+          <OverlayContainer>
+            {/* {!state.playing && !state.hitStopAt && (
+              <button
+                style={{
+                  fontSize: 48,
+                  fontWeight: "bold",
+                }}
+                onClick={handlePlayPause}
+              >
+                {state.playing ? "Pause" : "Play"}
+              </button>
+            )} */}
+            {(!state.playing && state.hitStopAt) ||
+              (true && (
+                <>
+                  {[1, 2].map((row) => {
+                    return (
+                      <div
+                        key={"row_" + row}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
+                        {[1, 2].map((col) => {
+                          const choice =
+                            levelData.choices[(row - 1) * 2 + col - 1];
+                          return (
+                            <div
+                              className="choice-container"
+                              key={"col_" + choice.id}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                backgroundColor: convertHex(
+                                  choice.colour,
+                                  0.25
+                                ),
+                                cursor: "pointer",
+                              }}
+                              onClick={() => selectChoice(choice.id)}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 48,
+                                  fontWeight: "bold",
+                                  textAlign: "center",
+                                }}
+                              >
+                                {choice.text}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: -50,
+                      right: 0,
+                      backgroundColor: "black",
+                      padding: 10,
+                    }}
+                  >
+                    Submit
+                  </div>
+                </>
+              ))}
+          </OverlayContainer>
           {domLoaded && (
             <>
               <ReactPlayer
@@ -226,18 +378,22 @@ export async function getServerSideProps() {
       {
         id: 1,
         text: "I'm a choice A",
+        colour: "#ff0000",
       },
       {
         id: 2,
         text: "I'm a choice B",
+        colour: "#0000ff",
       },
       {
         id: 3,
         text: "I'm a choice C",
+        colour: "#00ff00",
       },
       {
         id: 4,
         text: "I'm a choice D",
+        colour: "#ffff00",
       },
     ],
     answer: 1,
