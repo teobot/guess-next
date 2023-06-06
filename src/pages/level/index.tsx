@@ -4,6 +4,8 @@ import Head from "next/head";
 
 import ReactPlayer, { YouTubeConfig } from "react-player/youtube";
 
+import { Howl, Howler } from "howler";
+
 import styles from "@/styles/Level.module.css";
 import ChoiceSquare from "@/components/ChoiceSquare";
 
@@ -37,6 +39,7 @@ interface State {
   finished: boolean;
   hitStopAt: boolean;
   hasShownAfterChoice: boolean;
+  playedSound: boolean;
 }
 
 export default function Home({ levelData }: { levelData: LevelDataClass }) {
@@ -59,6 +62,7 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
     finished: false,
     hitStopAt: false,
     hasShownAfterChoice: false,
+    playedSound: false,
   });
 
   const youtubeConfig: YouTubeConfig = {
@@ -124,6 +128,26 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
           stateToChange.playing = false;
           stateToChange.finished = true;
           stateToChange.hasShownAfterChoice = true;
+
+          if (userChoice === levelData.answer) {
+            // correct
+            if (!state.playedSound) {
+              var sound = new Howl({
+                src: ["/resources/correct.mp3"],
+              });
+              sound.play();
+            }
+          } else {
+            // incorrect
+            if (!state.playedSound) {
+              var sound = new Howl({
+                src: ["/resources/incorrect.mp3"],
+              });
+              sound.play();
+            }
+          }
+
+          stateToChange.playedSound = true;
         }
       }
     }
@@ -192,12 +216,10 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
         <div
           style={{
             position: "relative",
-            backgroundColor: "green",
             width: 1920 / 2,
             height: 1080 / 2,
             maxWidth: 1920 / 2,
             maxHeight: 1080 / 2,
-            border: "6px solid blue",
           }}
         >
           <OverlayContainer>

@@ -101,6 +101,7 @@ a {
   aspect-ratio: 16/9;
   /* No clicking/hover effects */
   pointer-events: none;
+  border-radius: 10px;
 }
 
 .youtube-container iframe {
