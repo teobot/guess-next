@@ -45,7 +45,7 @@ interface State {
 export default function Home({ levelData }: { levelData: LevelDataClass }) {
   const playerRef = createRef<ReactPlayer>();
 
-  const [userChoice, setUserChoice] = useState<number>(1);
+  const [userChoice, setUserChoice] = useState<number>(levelData.choices[0].id);
   const [domLoaded, setDomLoaded] = useState(false);
   const [state, setState] = useState<State>({
     url: `https://www.youtube.com/watch?v=${levelData.clipId}`,
