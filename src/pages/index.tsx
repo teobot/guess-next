@@ -5,17 +5,19 @@ import { useRouter } from "next/router";
 // font
 import { Inter } from "next/font/google";
 
-// fs and path
-import fs from "fs";
-import path from "path";
-
 // interface
 import LevelDataClass from "@/common/interfaces/LevelDataClass";
 
+// swr
+import useSWR from "swr";
+import { fetcher } from "@/common/lib/fetcher";
+
 const inter = Inter({ subsets: ["latin"] });
 
-export default function Home({ levelData }: { levelData: LevelDataClass[] }) {
+export default function Home() {
   const router = useRouter();
+  const { data, error, isLoading } = useSWR("/api/get_all_levels", fetcher);
+
   return (
     <>
       <Head>
@@ -27,41 +29,25 @@ export default function Home({ levelData }: { levelData: LevelDataClass[] }) {
       <main className={`container mx-auto ${inter.className}`}>
         <br />
         <div className="flex flex-col divide-y">
-          {levelData.map((level: LevelDataClass) => {
-            return (
-              <div
-                key={level.id}
-                className="bg-blue-900 p-5 cursor-pointer hover:bg-blue-800 transition-colors"
-                onClick={() => {
-                  router.push(`/level/${level.id}`);
-                }}
-              >
-                <h1>{level.title}</h1>
-              </div>
-            );
-          })}
+          {data === undefined && <div>Loading...</div>}
+
+          {!isLoading &&
+            data !== undefined &&
+            data?.map((level: LevelDataClass) => {
+              return (
+                <div
+                  key={level.id}
+                  className="bg-blue-900 p-5 cursor-pointer hover:bg-blue-800 transition-colors"
+                  onClick={() => {
+                    router.push(`/level/${level.id}`);
+                  }}
+                >
+                  <h1>{level.title}</h1>
+                </div>
+              );
+            })}
         </div>
       </main>
     </>
   );
 }
-
-export const getServerSideProps = async () => {
-  // get all the folders in levels
-  const levels = fs.readdirSync(path.join(process.cwd(), "levels"));
-
-  // foreach of the levels, get the level data
-  let levelData = levels.map((level) => {
-    const levelData = fs.readFileSync(
-      path.join(process.cwd(), "levels", level, "data.json"),
-      "utf-8"
-    );
-    return JSON.parse(levelData);
-  });
-
-  return {
-    props: {
-      levelData,
-    },
-  };
-};

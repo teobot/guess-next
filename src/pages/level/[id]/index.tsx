@@ -14,60 +14,85 @@ import { Howl, Howler } from "howler";
 // components
 import ChoiceSquare from "@/components/ChoiceSquare";
 
-// fs
-import { promises as fs } from "fs";
-
 // interface
 import LevelDataClass from "@/common/interfaces/LevelDataClass";
 import State from "@/common/interfaces/State";
 
-export default function Home({ levelData }: { levelData: LevelDataClass }) {
-  const playerRef = createRef<ReactPlayer>();
-  const router = useRouter();
-  const [userChoice, setUserChoice] = useState<number>(levelData.choices[0].id);
-  const [domLoaded, setDomLoaded] = useState(false);
-  const [state, setState] = useState<State>({
-    url: `https://www.youtube.com/watch?v=${levelData.clipId}`,
-    pip: false,
-    playing: false,
-    controls: false,
-    light: false,
-    volume: 0.2,
-    muted: false,
-    played: 0,
-    loaded: 0,
-    duration: 0,
-    playbackRate: 1.0,
-    finished: false,
-    hitStopAt: false,
-    hasShownAfterChoice: false,
-    playedSound: false,
-  });
+// swr
+import useSWR from "swr";
+import { fetcher } from "@/common/lib/fetcher";
 
-  const youtubeConfig: YouTubeConfig = {
-    playerVars: {
-      autohide: 0,
-      showinfo: 0,
-      controls: 0,
-      modestbranding: 1,
-      rel: 0,
-      disablekb: 1,
-      iv_load_policy: 3,
-      start: levelData.startAt,
-      cc_load_policy: 0,
-      fs: 0,
-      playsinline: 1,
-      enablejsapi: 1,
-      origin: "http://localhost:3000",
-      widgetId: 1,
-    },
-    embedOptions: {
-      autoplay: 0,
-    },
-    onUnstarted: () => {
-      console.log("onUnstarted");
-    },
-  };
+export default function Home() {
+  const router = useRouter();
+
+  const playerRef = createRef<ReactPlayer>();
+
+  const [userChoice, setUserChoice] = useState<number>(0);
+  const [domLoaded, setDomLoaded] = useState(false);
+  const [state, setState] = useState<State | null>(null);
+  const [youtubeConfig, setYoutubeConfig] = useState<YouTubeConfig | null>(
+    null
+  );
+
+  const {
+    data,
+    error,
+    isLoading,
+  }: {
+    data: LevelDataClass;
+    error: any;
+    isLoading: boolean;
+  } = useSWR(
+    `/api/get_level_by_id?id=${router.query.id ? router.query.id : "1"}`,
+    fetcher
+  );
+
+  useEffect(() => {
+    if (data !== undefined && !isLoading && !error) {
+      setUserChoice(data.choices[0].id);
+      setState({
+        url: `https://www.youtube.com/watch?v=${data.clipId}`,
+        pip: false,
+        playing: false,
+        controls: false,
+        light: false,
+        volume: 0.2,
+        muted: false,
+        played: 0,
+        loaded: 0,
+        duration: 0,
+        playbackRate: 1.0,
+        finished: false,
+        hitStopAt: false,
+        hasShownAfterChoice: false,
+        playedSound: false,
+      });
+      setYoutubeConfig({
+        playerVars: {
+          autohide: 0,
+          showinfo: 0,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          disablekb: 1,
+          iv_load_policy: 3,
+          start: data.startAt,
+          cc_load_policy: 0,
+          fs: 0,
+          playsinline: 1,
+          enablejsapi: 1,
+          origin: "http://localhost:3000",
+          widgetId: 1,
+        },
+        embedOptions: {
+          autoplay: 0,
+        },
+        onUnstarted: () => {
+          console.log("onUnstarted");
+        },
+      });
+    }
+  }, [data]);
 
   useEffect(() => {
     setDomLoaded(true);
@@ -75,40 +100,49 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
 
   const handlePlay = () => {
     console.log("onPlay");
-    setState({ ...state, playing: true });
+    if (state) {
+      setState({ ...state, playing: true });
+    }
   };
 
   const handlePause = () => {
     console.log("onPause");
-    setState({ ...state, playing: false });
+    if (state) {
+      setState({ ...state, playing: false });
+    }
   };
 
   const handleEnded = () => {
     console.log("onEnd");
-    setState({ ...state, finished: true });
+    if (state) {
+      setState({ ...state, finished: true });
+    }
   };
 
   const handleProgress = (v_state: any) => {
+    if (!state) return;
+
     console.log("onProgress", v_state);
 
-    let stateToChange: State = {
+    let stateToChange = {
       ...state,
+      url: `https://www.youtube.com/watch?v=${data.clipId ?? ""}`,
     };
 
-    if (v_state.playedSeconds >= levelData.stopAt) {
+    if (v_state.playedSeconds >= data.stopAt) {
       if (!state.hitStopAt) {
         console.log("onPause");
         stateToChange.playing = false;
         stateToChange.hitStopAt = true;
       } else {
-        if (v_state.playedSeconds >= levelData.stopAt + levelData.continueFor) {
+        if (v_state.playedSeconds >= data.stopAt + data.continueFor) {
           // its hit the stop at and the continue to time
           console.log("showAnswer");
           stateToChange.playing = false;
           stateToChange.finished = true;
           stateToChange.hasShownAfterChoice = true;
 
-          if (userChoice === levelData.answer) {
+          if (userChoice === data.answer) {
             // correct
             if (!state.playedSound) {
               var sound = new Howl({
@@ -136,149 +170,139 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
     setState(stateToChange);
   };
 
-  const handleDuration = (duration: any) => {
-    console.log("onDuration", duration);
-    setState({ ...state, duration });
+  const handlePlayPause = () => {
+    if (state) {
+      setState({ ...state, playing: !state.playing });
+    }
   };
 
-  const handlePlayPause = () => {
-    setState({ ...state, playing: !state.playing });
+  const handleDuration = (duration: any) => {
+    console.log("onDuration", duration);
+    if (state) {
+      setState({ ...state, duration });
+    }
   };
 
   const selectChoice = (id: number) => {
     setUserChoice(id);
   };
 
-  return (
-    <>
-      <Head>
-        <title>{levelData.title} - GuessNext</title>
-        <meta name="description" content="Generated by create next app" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <main className="bg-blue-200 h-screen w-screen flex justify-center items-center relative">
-        <div className="relative w-11/12 lg:w-1/2 bg-green-200">
-          <div className="absolute inset-0 w-full h-full z-[100]">
-            {!state.playing && !state.hitStopAt && (
-              <div className="flex h-full items-center justify-center">
-                <button
-                  className="bg-blue-800 text-white font-bold rounded-md py-3 px-8 text-4xl"
-                  onClick={handlePlayPause}
-                >
-                  {state.playing ? "Pause" : "Start"}
-                </button>
-              </div>
-            )}
-            {!state.playing &&
-              state.hitStopAt &&
-              !state.hasShownAfterChoice && (
-                <div className="absolute h-full w-full">
-                  {[1, 2].map((row) => {
-                    return (
-                      <div key={"row_" + row} className="flex flex-row h-1/2">
-                        {[1, 2].map((col) => {
-                          const choice =
-                            levelData.choices[(row - 1) * 2 + col - 1];
-                          return (
-                            <ChoiceSquare
-                              key={"col_" + choice.id}
-                              choice={choice}
-                              onClick={() => selectChoice(choice.id)}
-                              isSelected={userChoice === choice.id}
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+  if (error) return <div>Error: {error}</div>;
+
+  if (data !== undefined && !isLoading && !error && state !== null) {
+    return (
+      <>
+        <Head>
+          <title>{data.title} - GuessNext</title>
+          <meta name="description" content="Generated by create next app" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+        <main className="bg-blue-200 h-screen w-screen flex justify-center items-center relative">
+          <div className="relative w-11/12 lg:w-1/2 bg-green-200">
+            <div className="absolute inset-0 w-full h-full z-[100]">
+              {!state.playing && !state.hitStopAt && (
+                <div className="flex h-full items-center justify-center">
+                  <button
+                    className="bg-blue-800 text-white font-bold rounded-md py-3 px-8 text-4xl"
+                    onClick={handlePlayPause}
+                  >
+                    {state.playing ? "Pause" : "Start"}
+                  </button>
+                </div>
+              )}
+              {!state.playing &&
+                state.hitStopAt &&
+                !state.hasShownAfterChoice && (
+                  <div className="absolute h-full w-full">
+                    {[1, 2].map((row) => {
+                      return (
+                        <div key={"row_" + row} className="flex flex-row h-1/2">
+                          {[1, 2].map((col) => {
+                            const choice =
+                              data.choices[(row - 1) * 2 + col - 1];
+                            return (
+                              <ChoiceSquare
+                                key={"col_" + choice.id}
+                                choice={choice}
+                                onClick={() => selectChoice(choice.id)}
+                                isSelected={userChoice === choice.id}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                    <div
+                      className="p-5 bg-blue-600 mt-2 rounded-xl text-center text-xl font-bold cursor-pointer"
+                      onClick={() => {
+                        console.log("submit");
+                        handlePlayPause();
+                      }}
+                    >
+                      Confirm Choice
+                    </div>
+                  </div>
+                )}
+              {state.hasShownAfterChoice && (
+                <div className="absolute flex flex-col h-full w-full flex items-center justify-center">
+                  <div className="text-9xl text-white font-bold drop-shadow-2xl">
+                    {userChoice === data.answer ? "Correct" : "Incorrect"}
+                  </div>
                   <div
-                    className="p-5 bg-blue-600 mt-2 rounded-xl text-center text-xl font-bold cursor-pointer"
+                    className="p-4 px-6 bg-blue-600 mt-1 rounded-xl text-center text-lg font-bold cursor-pointer"
                     onClick={() => {
-                      console.log("submit");
-                      handlePlayPause();
+                      router.push("/");
                     }}
                   >
-                    Confirm Choice
+                    Back to Home
                   </div>
                 </div>
               )}
-            {state.hasShownAfterChoice && (
-              <div className="absolute flex flex-col h-full w-full flex items-center justify-center">
-                <div className="text-9xl text-white font-bold drop-shadow-2xl">
-                  {userChoice === levelData.answer ? "Correct" : "Incorrect"}
-                </div>
-                <div
-                  className="p-4 px-6 bg-blue-600 mt-1 rounded-xl text-center text-lg font-bold cursor-pointer"
-                  onClick={() => {
-                    router.push("/");
-                  }}
-                >
-                  Back to Home
-                </div>
+              <div className="absolute bottom-0 right-0 bg-black text-white p-2">
+                {state.played.toFixed(2)}
+              </div>
+            </div>
+            {domLoaded && youtubeConfig !== null && (
+              <ReactPlayer
+                ref={playerRef}
+                className="youtube-container w-full h-full"
+                config={youtubeConfig}
+                url={state.url}
+                pip={state.pip}
+                playing={state.playing}
+                controls={state.controls}
+                light={state.light}
+                loop={false}
+                playbackRate={state.playbackRate}
+                volume={state.volume}
+                muted={state.muted}
+                onReady={() => console.log("onReady")}
+                onStart={() => console.log("onStart")}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onBuffer={() => console.log("onBuffer")}
+                onSeek={(e) => console.log("onSeek", e)}
+                onEnded={handleEnded}
+                onError={(e) => console.log("onError", e)}
+                onProgress={handleProgress}
+                onDuration={handleDuration}
+              />
+            )}
+
+            {!state.hasShownAfterChoice && (
+              <div
+                className="absolute -bottom-50 mt-3 left-0 right-0 p-4 px-6 bg-blue-600 rounded-xl text-center text-lg font-bold cursor-pointer"
+                onClick={() => {
+                  router.push("/");
+                }}
+              >
+                Back to Home
               </div>
             )}
-            <div className="absolute bottom-0 right-0 bg-black text-white p-2">
-              {state.played.toFixed(2)}
-            </div>
           </div>
-          {domLoaded && (
-            <ReactPlayer
-              ref={playerRef}
-              className="youtube-container w-full h-full"
-              config={youtubeConfig}
-              url={state.url}
-              pip={state.pip}
-              playing={state.playing}
-              controls={state.controls}
-              light={state.light}
-              loop={false}
-              playbackRate={state.playbackRate}
-              volume={state.volume}
-              muted={state.muted}
-              onReady={() => console.log("onReady")}
-              onStart={() => console.log("onStart")}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onBuffer={() => console.log("onBuffer")}
-              onSeek={(e) => console.log("onSeek", e)}
-              onEnded={handleEnded}
-              onError={(e) => console.log("onError", e)}
-              onProgress={handleProgress}
-              onDuration={handleDuration}
-            />
-          )}
-
-          {!state.hasShownAfterChoice && (
-            <div
-              className="absolute -bottom-50 mt-3 left-0 right-0 p-4 px-6 bg-blue-600 rounded-xl text-center text-lg font-bold cursor-pointer"
-              onClick={() => {
-                router.push("/");
-              }}
-            >
-              Back to Home
-            </div>
-          )}
-        </div>
-      </main>
-    </>
-  );
-}
-
-export async function getServerSideProps(req: any) {
-  const { id } = req.query;
-
-  // get the data.json file from `levels/${id}/data.json` and return it as props
-
-  const file = await fs.readFile(
-    process.cwd() + `/levels/${id}/data.json`,
-    "utf8"
-  );
-  const data = JSON.parse(file);
-
-  return {
-    props: {
-      levelData: data,
-    },
-  };
+        </main>
+      </>
+    );
+  }
 }
