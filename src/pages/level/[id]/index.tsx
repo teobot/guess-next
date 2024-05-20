@@ -1,50 +1,29 @@
+// react
 import { useState, useEffect, createRef } from "react";
 
+// next
 import Head from "next/head";
+import { useRouter } from "next/router";
 
+// react-player
 import ReactPlayer, { YouTubeConfig } from "react-player/youtube";
 
+// howler
 import { Howl, Howler } from "howler";
 
-import styles from "@/styles/Level.module.css";
+// components
 import ChoiceSquare from "@/components/ChoiceSquare";
 
-interface LevelDataClass {
-  id: number;
-  title: string;
-  clipId: string;
-  startAt: number;
-  stopAt: number;
-  continueFor: number;
-  choices: {
-    id: number;
-    text: string;
-    colour: string;
-  }[];
-  answer: number;
-}
+// fs
+import { promises as fs } from "fs";
 
-interface State {
-  url: string;
-  pip: boolean;
-  playing: boolean;
-  controls: boolean;
-  light: boolean;
-  volume: number;
-  muted: boolean;
-  played: number;
-  loaded: number;
-  duration: number;
-  playbackRate: number;
-  finished: boolean;
-  hitStopAt: boolean;
-  hasShownAfterChoice: boolean;
-  playedSound: boolean;
-}
+// interface
+import LevelDataClass from "@/common/interfaces/LevelDataClass";
+import State from "@/common/interfaces/State";
 
 export default function Home({ levelData }: { levelData: LevelDataClass }) {
   const playerRef = createRef<ReactPlayer>();
-
+  const router = useRouter();
   const [userChoice, setUserChoice] = useState<number>(levelData.choices[0].id);
   const [domLoaded, setDomLoaded] = useState(false);
   const [state, setState] = useState<State>({
@@ -170,40 +149,6 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
     setUserChoice(id);
   };
 
-  const OverlayContainer = ({
-    children,
-    top = 0,
-    right = 0,
-    bottom = 0,
-    left = 0,
-  }: {
-    children: any;
-    top?: number;
-    right?: number;
-    bottom?: number;
-    left?: number;
-  }) => {
-    return (
-      <div
-        style={{
-          position: "absolute",
-          top: top,
-          right: right,
-          left: left,
-          bottom: bottom,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 100,
-          width: "100%",
-          height: "100%",
-        }}
-      >
-        {children}
-      </div>
-    );
-  };
-
   return (
     <>
       <Head>
@@ -212,40 +157,26 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div
-          style={{
-            position: "relative",
-            width: 1920 / 2,
-            height: 1080 / 2,
-            maxWidth: 1920 / 2,
-            maxHeight: 1080 / 2,
-          }}
-        >
-          <OverlayContainer>
+      <main className="bg-blue-200 h-screen w-screen flex justify-center items-center relative">
+        <div className="relative w-11/12 lg:w-1/2 bg-green-200">
+          <div className="absolute inset-0 w-full h-full z-[100]">
             {!state.playing && !state.hitStopAt && (
-              <button
-                className={styles.playPauseButton}
-                onClick={handlePlayPause}
-              >
-                {state.playing ? "Pause" : "Play"}
-              </button>
+              <div className="flex h-full items-center justify-center">
+                <button
+                  className="bg-blue-800 text-white font-bold rounded-md py-3 px-8 text-4xl"
+                  onClick={handlePlayPause}
+                >
+                  {state.playing ? "Pause" : "Start"}
+                </button>
+              </div>
             )}
             {!state.playing &&
               state.hitStopAt &&
               !state.hasShownAfterChoice && (
-                <>
+                <div className="absolute h-full w-full">
                   {[1, 2].map((row) => {
                     return (
-                      <div
-                        key={"row_" + row}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                      >
+                      <div key={"row_" + row} className="flex flex-row h-1/2">
                         {[1, 2].map((col) => {
                           const choice =
                             levelData.choices[(row - 1) * 2 + col - 1];
@@ -262,50 +193,39 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
                     );
                   })}
                   <div
+                    className="p-5 bg-blue-600 mt-2 rounded-xl text-center text-xl font-bold cursor-pointer"
                     onClick={() => {
                       console.log("submit");
                       handlePlayPause();
                     }}
-                    style={{
-                      position: "absolute",
-                      bottom: -50,
-                      right: 0,
-                      backgroundColor: "black",
-                      padding: 10,
-                    }}
                   >
-                    Submit
+                    Confirm Choice
                   </div>
-                </>
+                </div>
               )}
             {state.hasShownAfterChoice && (
-              <div
-                style={{
-                  fontSize: 100,
-                  color: "white",
-                  fontWeight: "bold",
-                  textShadow: "0px 0px 10px black",
-                }}
-              >
-                {userChoice === levelData.answer ? "Correct" : "Incorrect"}
+              <div className="absolute flex flex-col h-full w-full flex items-center justify-center">
+                <div className="text-9xl text-white font-bold drop-shadow-2xl">
+                  {userChoice === levelData.answer ? "Correct" : "Incorrect"}
+                </div>
+                <div
+                  className="p-4 px-6 bg-blue-600 mt-1 rounded-xl text-center text-lg font-bold cursor-pointer"
+                  onClick={() => {
+                    router.push("/");
+                  }}
+                >
+                  Back to Home
+                </div>
               </div>
             )}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                right: 0,
-                backgroundColor: "black",
-                padding: 10,
-              }}
-            >
-              {state.played}
+            <div className="absolute bottom-0 right-0 bg-black text-white p-2">
+              {state.played.toFixed(2)}
             </div>
-          </OverlayContainer>
+          </div>
           {domLoaded && (
             <ReactPlayer
               ref={playerRef}
-              className="youtube-container"
+              className="youtube-container w-full h-full"
               config={youtubeConfig}
               url={state.url}
               pip={state.pip}
@@ -328,47 +248,37 @@ export default function Home({ levelData }: { levelData: LevelDataClass }) {
               onDuration={handleDuration}
             />
           )}
+
+          {!state.hasShownAfterChoice && (
+            <div
+              className="absolute -bottom-50 mt-3 left-0 right-0 p-4 px-6 bg-blue-600 rounded-xl text-center text-lg font-bold cursor-pointer"
+              onClick={() => {
+                router.push("/");
+              }}
+            >
+              Back to Home
+            </div>
+          )}
         </div>
       </main>
     </>
   );
 }
 
-export async function getServerSideProps() {
-  const levelData = {
-    id: 1,
-    title: "What does XQC say next?",
-    clipId: "gHwkvZWzqyM",
-    startAt: 0,
-    stopAt: 6.5,
-    continueFor: 7,
-    answer: 1,
-    choices: [
-      {
-        id: 1,
-        text: "Poki Kills Jesse",
-        colour: "#ff0000",
-      },
-      {
-        id: 2,
-        text: "Poki kills XQC",
-        colour: "#0000ff",
-      },
-      {
-        id: 3,
-        text: "Poki kills self",
-        colour: "#00ff00",
-      },
-      {
-        id: 4,
-        text: "Poki Misses",
-        colour: "#ffff00",
-      },
-    ],
-  } as LevelDataClass;
+export async function getServerSideProps(req: any) {
+  const { id } = req.query;
+
+  // get the data.json file from `levels/${id}/data.json` and return it as props
+
+  const file = await fs.readFile(
+    process.cwd() + `/levels/${id}/data.json`,
+    "utf8"
+  );
+  const data = JSON.parse(file);
+
   return {
     props: {
-      levelData,
+      levelData: data,
     },
   };
 }

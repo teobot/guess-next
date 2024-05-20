@@ -11,25 +11,14 @@ export default function ChoiceSquare({
 }) {
   return (
     <div
-      className="choice-container"
+      className="choice-container w-full h-full cursor-pointer flex justify-center items-center"
       style={{
-        width: "100%",
-        height: "100%",
-        backgroundColor: convertHex(choice.colour, 0.25),
-        cursor: "pointer",
+        backgroundColor: convertHex(choice.colour, isSelected ? 0.6 : 0.25),
         border: isSelected ? "5px solid black" : "none",
       }}
       onClick={onClick}
     >
-      <div
-        style={{
-          fontSize: 48,
-          fontWeight: "bold",
-          textAlign: "center",
-        }}
-      >
-        {choice.text}
-      </div>
+      <div className="text-4xl font-bold text-center">{choice.text}</div>
     </div>
   );
 }
