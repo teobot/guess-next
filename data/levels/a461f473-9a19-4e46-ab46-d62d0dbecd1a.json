@@ -1,0 +1,30 @@
+{
+  "title": "Old man on swing",
+  "clipId": "2Bm60LbaMXk",
+  "startAt": 0,
+  "stopAt": 3,
+  "continueFor": 4,
+  "answer": 2,
+  "choices": [
+    {
+      "id": 1,
+      "text": "He falls off the swing",
+      "colour": "#ff0000"
+    },
+    {
+      "id": 2,
+      "text": "He backflips off the swing",
+      "colour": "#0000ff"
+    },
+    {
+      "id": 3,
+      "text": "He jumps off the swing",
+      "colour": "#00ff00"
+    },
+    {
+      "id": 4,
+      "text": "He swings off the swing",
+      "colour": "#ffff00"
+    }
+  ]
+}

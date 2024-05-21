@@ -5,23 +5,28 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
 
-import LevelDataClass from "@/common/interfaces/LevelDataClass";
-
-type Data = LevelDataClass[];
+type Data = {
+  id: string;
+  title: string;
+}[];
 
 export default function handler(
   req: NextApiRequest,
   res: NextApiResponse<Data>
 ) {
-  const levels = fs.readdirSync(path.join(process.cwd(), "levels"));
+  const levels = fs.readdirSync(path.join(process.cwd(), "data", "levels"));
 
   let levelData = levels.map((level) => {
     const levelData = fs.readFileSync(
-      path.join(process.cwd(), "levels", level, "data.json"),
+      path.join(process.cwd(), "data", "levels", level),
       "utf-8"
     );
-    return JSON.parse(levelData);
+    const levelDataJson = JSON.parse(levelData);
+    return {
+      id: level.replace(".json", ""),
+      title: levelDataJson.title,
+    };
   });
-
+  
   res.status(200).json(levelData);
 }

@@ -1,5 +1,4 @@
 {
-  "id": 1,
   "title": "What does XQC say next?",
   "clipId": "gHwkvZWzqyM",
   "startAt": 0,
@@ -9,23 +8,19 @@
   "choices": [
     {
       "id": 1,
-      "text": "Poki Kills Jesse",
-      "colour": "#ff0000"
+      "text": "Poki Kills Jesse"
     },
     {
       "id": 2,
-      "text": "Poki kills XQC",
-      "colour": "#0000ff"
+      "text": "Poki kills XQC"
     },
     {
       "id": 3,
-      "text": "Poki kills self",
-      "colour": "#00ff00"
+      "text": "Poki kills self"
     },
     {
       "id": 4,
-      "text": "Poki Misses",
-      "colour": "#ffff00"
+      "text": "Poki Misses"
     }
   ]
 }

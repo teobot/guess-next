@@ -16,8 +16,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   const router = useRouter();
-  const { data, error, isLoading } = useSWR("/api/get_all_levels", fetcher);
-
+  const levels = useSWR("/api/get_all_levels", fetcher);
+  const playlists = useSWR("/api/get_all_playlists", fetcher);
   return (
     <>
       <Head>
@@ -29,11 +29,53 @@ export default function Home() {
       <main className={`container mx-auto ${inter.className}`}>
         <br />
         <div className="flex flex-col divide-y">
-          {data === undefined && <div>Loading...</div>}
+          {playlists.data === undefined && <div>Loading...</div>}
 
-          {!isLoading &&
-            data !== undefined &&
-            data?.map((level: LevelDataClass) => {
+          {!playlists.isLoading &&
+            playlists.data !== undefined &&
+            playlists.data?.map(
+              (playList: {
+                id: string;
+                title: string;
+                levels: { id: string; title: string }[];
+              }) => {
+                return (
+                  <div
+                    key={playList.id}
+                    className="bg-blue-900 p-5 cursor-pointer hover:bg-blue-800 transition-colors"
+                    onClick={() => {
+                      router.push(
+                        `/level/${playList.levels[0].id}?playlist=${playList.id}`
+                      );
+                    }}
+                  >
+                    <h1 className="font-bold text-2xl underline">
+                      {playList.title}
+                    </h1>
+                    <div>
+                      {playList.levels.map((level) => {
+                        return (
+                          <div key={level.id}>
+                            <h2>{level.title}</h2>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+            )}
+        </div>
+
+        <br />
+        <br />
+
+        <div className="flex flex-col divide-y">
+          {levels.data === undefined && <div>Loading...</div>}
+
+          {!levels.isLoading &&
+            levels.data !== undefined &&
+            levels.data?.map((level: { id: string; title: string }) => {
               return (
                 <div
                   key={level.id}

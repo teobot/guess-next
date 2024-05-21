@@ -47,6 +47,13 @@ export default function Home() {
     fetcher
   );
 
+  const playlist = useSWR(
+    router.query.playlist
+      ? `/api/get_playlist_by_id?id=${router.query.playlist}`
+      : null,
+    fetcher
+  );
+
   useEffect(() => {
     if (data !== undefined && !isLoading && !error) {
       setUserChoice(data.choices[0].id);
@@ -199,7 +206,7 @@ export default function Home() {
           <link rel="icon" href="/favicon.ico" />
         </Head>
         <main className="bg-blue-200 h-screen w-screen flex justify-center items-center relative">
-          <div className="relative w-11/12 lg:w-1/2 bg-green-200">
+          <div className="relative w-11/12 lg:w-10/12 bg-green-200">
             <div className="absolute inset-0 w-full h-full z-[100]">
               {!state.playing && !state.hitStopAt && (
                 <div className="flex h-full items-center justify-center">
@@ -215,16 +222,17 @@ export default function Home() {
                 state.hitStopAt &&
                 !state.hasShownAfterChoice && (
                   <div className="absolute h-full w-full">
-                    {[1, 2].map((row) => {
+                    {[1, 2].map((row, rowIndex) => {
                       return (
                         <div key={"row_" + row} className="flex flex-row h-1/2">
-                          {[1, 2].map((col) => {
+                          {[1, 2].map((col, colIndex) => {
                             const choice =
                               data.choices[(row - 1) * 2 + col - 1];
                             return (
                               <ChoiceSquare
                                 key={"col_" + choice.id}
                                 choice={choice}
+                                index={(row - 1) * 2 + col - 1}
                                 onClick={() => selectChoice(choice.id)}
                                 isSelected={userChoice === choice.id}
                               />
@@ -246,16 +254,27 @@ export default function Home() {
                 )}
               {state.hasShownAfterChoice && (
                 <div className="absolute flex flex-col h-full w-full flex items-center justify-center">
-                  <div className="text-9xl text-white font-bold drop-shadow-2xl">
+                  <div className="text-6xl md:text-8xl text-white font-bold drop-shadow-2xl">
                     {userChoice === data.answer ? "Correct" : "Incorrect"}
                   </div>
                   <div
                     className="p-4 px-6 bg-blue-600 mt-1 rounded-xl text-center text-lg font-bold cursor-pointer"
                     onClick={() => {
-                      router.push("/");
+                      if (
+                        playlist.data !== undefined &&
+                        playlist.data !== null
+                      ) {
+                        router.push(
+                          `/level/${playlist.data.levels[1]}?playlist=${playlist.data.id}`
+                        );
+                      } else {
+                        router.push("/");
+                      }
                     }}
                   >
-                    Back to Home
+                    {playlist.data !== undefined && playlist.data !== null
+                      ? "Next Level"
+                      : "Back to Home"}
                   </div>
                 </div>
               )}

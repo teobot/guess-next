@@ -15,7 +15,7 @@ export default async function handler(
   const { id } = req.query;
 
   const file = await fs.readFile(
-    process.cwd() + `/data/levels/${id}.json`,
+    process.cwd() + `/data/playlists/${id}.json`,
     "utf8"
   );
 
